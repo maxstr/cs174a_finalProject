@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from tabulate import tabulate
 import sys
 import mysql.connector
 
@@ -39,6 +40,14 @@ def main(argv=None):
             except:
                 print ("An error occurred!")
         elif (response == 2):
+            queryDict['empID'] = getNum("Please enter the employee ID\n")
+            query = "SELECT * FROM Employees " \
+                           "WHERE id = %(empID)i" % queryDict
+            cursor.execute(query)
+            print("Printing result data")
+            printTableRows(cursor.fetchall(), cursor.column_names)
+
+
             pass
         elif (response == 3):
             pass
@@ -56,8 +65,15 @@ def getNum(prompt):
         try:
             num = int(raw_input(prompt))
         except ValueError:
-            print ("Please enter a number.\n")
+            print ("Please enter a number.")
     return num
+def printTableRows(tuples, columns):
+    rows = []
+    for row in tuples:
+        rows.append(list(row))
+    print(tabulate(rows, headers = columns))
+
+
 
 
 
