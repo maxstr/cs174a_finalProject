@@ -41,16 +41,22 @@ def main(argv=None):
                 print ("An error occurred!")
         elif (response == 2):
             queryDict['empID'] = getNum("Please enter the employee ID\n")
-            query = "SELECT * FROM Employees " \
-                           "WHERE id = %(empID)i" % queryDict
-            cursor.execute(query)
-            print("Printing result data")
-            printTableRows(cursor.fetchall(), cursor.column_names)
-
-
-            pass
+            try:
+                query = "SELECT * FROM Employees " \
+                               "WHERE id = %(empID)i" % queryDict
+                cursor.execute(query)
+                print("Printing result data")
+                printTableRows(cursor.fetchall(), cursor.column_names)
+            except:
+                print ("An error occurred!")
         elif (response == 3):
-            pass
+            try:
+                query = "SELECT * FROM Employees "
+                cursor.execute(query)
+                print("Printing result data")
+                printTableRows(cursor.fetchall(), cursor.column_names)
+            except:
+                print ("An error occurred!")
         elif (response == 4):
             pass
         response = getNum("Please enter an option\n")
