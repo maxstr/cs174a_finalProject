@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+import sys
+import mysql.connector
+
+USER = 'root'
+PASSWORD = ''
+HOST = '127.0.0.1'
+PORT = 3306
+DB = 'project'
+prompt = """\
+################################################################################
+##
+##              Final Project!
+##
+##          Options:
+##          1. Insert emp_id emp_age emp_salary
+##          2. Select emp_id
+##          3. Select *
+##          4. Select SUM
+##          5. Exit
+##
+################################################################################"""
+def main(argv=None):
+    connection = mysql.connector.connect(user=USER, password=PASSWORD, host=HOST, port=PORT, database=DB)
+    cursor = connection.cursor()
+    print(prompt)
+    response = getNum("Please enter an option\n")
+    while (response != 5):
+        queryDict = {}
+        if (response == 1):
+            queryDict['empID'] = getNum("Please enter the employee ID\n")
+            queryDict['empAge'] = getNum("Please enter the employee's age\n")
+            queryDict['empSalary'] = getNum("Please enter the employee's salary\n")
+            try:
+                cursor.execute("INSERT INTO Employees VALUES"\
+                           "(%(empID)i, %(empAge)i, %(empSalary)i)" % queryDict)
+                connection.commit()
+                print("User added.")
+            except:
+                print ("An error occurred!")
+        elif (response == 2):
+            pass
+        elif (response == 3):
+            pass
+        elif (response == 4):
+            pass
+        response = getNum("Please enter an option\n")
+    connection.close()
+    return 0
+
+
+
+def getNum(prompt):
+    num = None
+    while (not num):
+        try:
+            num = int(raw_input(prompt))
+        except ValueError:
+            print ("Please enter a number.\n")
+    return num
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    sys.exit(main())
