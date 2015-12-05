@@ -5,7 +5,7 @@
 #include <string.h>
 #include "WrappedCrypto.h"
 
-const int keySize = 2048;
+const int keySize = 128;
 
 keys generate_keys()
 {
@@ -18,7 +18,7 @@ keys generate_keys()
   return retval;
 }
 
-char* encrypt_num(unsigned long int num, char *publkey, int* size)
+void* encrypt_num(unsigned long int num, char *publkey, int* size)
 {
   //make the pubkey from the string
   paillier_pubkey_t* publics = paillier_pubkey_from_hex(publkey);
@@ -38,12 +38,12 @@ char* encrypt_num(unsigned long int num, char *publkey, int* size)
 
   void *result;
   *size = mpz_sizeinbase(encrypted->c, 2);
-  result = (char*) paillier_ciphertext_to_bytes(mpz_sizeinbase(encrypted->c, 2),encrypted);
+  result = paillier_ciphertext_to_bytes(mpz_sizeinbase(encrypted->c, 2),encrypted);
   
   return result;
 }
 
-int decrypt_num(void *to_unencrypt,char* pubkey,char*privkey, int size)
+unsigned int decrypt_num(void *to_unencrypt,char* pubkey,char*privkey, int size)
 {
   //make a temp variable for encrypted
   //unsigned long int*uitemp = &to_unencrypt;
@@ -61,7 +61,7 @@ int decrypt_num(void *to_unencrypt,char* pubkey,char*privkey, int size)
 
   paillier_plaintext_t* plainText = paillier_dec(NULL,publics,privates,encrypted);
 
-  return (int) mpz_get_ui(plainText->m);
+  return mpz_get_ui(plainText->m);
 }
 
 void* homomorphic_add(void *num1,void* num2, char* publ,int size1, int size2, int* retsize)
@@ -86,7 +86,7 @@ void* homomorphic_add(void *num1,void* num2, char* publ,int size1, int size2, in
   paillier_mul(publics,ct,encrypted1,encrypted2);
   *retsize = mpz_sizeinbase(ct->c, 2);
   void* result;
- result = (char*) paillier_ciphertext_to_bytes(mpz_sizeinbase(ct->c, 2),ct); 
+ result = paillier_ciphertext_to_bytes(mpz_sizeinbase(ct->c, 2),ct); 
 
   //return result as iresult
  return result;
@@ -100,9 +100,9 @@ int main()
     printf("Keys:\nPublic: %s\n\nPrivate: %s\n",bothkeys.public,bothkeys.private);
     int size,size1,size2;
     int result;
-    char *enc = encrypt_num(1234, bothkeys.public, &size);
-    char *enc2 = encrypt_num(1234,bothkeys.public,&size1); 
-    char *enc3 = homomorphic_add(enc,enc2,bothkeys.public,size,size1,&size2);
+    void *enc = encrypt_num(1234, bothkeys.public, &size);
+    void *enc2 = encrypt_num(1234,bothkeys.public,&size1); 
+    void *enc3 = homomorphic_add(enc,enc2,bothkeys.public,size,size1,&size2);
     result = decrypt_num(enc3, bothkeys.public ,bothkeys.private, size2);
     printf("Encrypted Text:\n%s\n",enc);
     printf("Decrypted Number:\n%d\n",result);
