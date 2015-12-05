@@ -49,6 +49,7 @@ unsigned int decrypt_num(void *to_unencrypt,char* pubkey,char*privkey, int size)
   //unsigned long int*uitemp = &to_unencrypt;
   //void *vtemp = (void *)uitemp;
 
+
   //make a ciphertext out of given encrypted text
   paillier_ciphertext_t* encrypted;
   encrypted = paillier_ciphertext_from_bytes(to_unencrypt, size);
@@ -91,7 +92,17 @@ void* homomorphic_add(void *num1,void* num2, char* publ,int size1, int size2, in
   //return result as iresult
  return result;
 }
-
+// Allocates and returns a pointer to an array of unsigned chars
+unsigned char* toText (void* data, int size) {
+    unsigned char* ret = (unsigned char*) malloc(sizeof(unsigned char) * size);
+    for (int i = 0; i < size; i++) {
+        ret[i] = *((unsigned char*) (data + i));
+    }
+    return ret;
+}
+void* toData (unsigned char* text) {
+    return (void*) text;
+}
 
 
 int main()
@@ -99,16 +110,15 @@ int main()
     keys bothkeys = generate_keys();
     printf("Keys:\nPublic: %s\n\nPrivate: %s\n",bothkeys.public,bothkeys.private);
     int size,size1,size2;
-    int result;
+    unsigned int result;
     void *enc = encrypt_num(1234, bothkeys.public, &size);
     void *enc2 = encrypt_num(1234,bothkeys.public,&size1); 
     void *enc3 = homomorphic_add(enc,enc2,bothkeys.public,size,size1,&size2);
     result = decrypt_num(enc3, bothkeys.public ,bothkeys.private, size2);
-    printf("Encrypted Text:\n%s\n",enc);
     printf("Decrypted Number:\n%d\n",result);
   
     return 0;
 
     
-    }
+}
 
