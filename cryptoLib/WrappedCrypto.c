@@ -15,6 +15,8 @@ keys generate_keys()
   paillier_keygen(keySize,&publics,&privates,paillier_get_rand_devrandom);
   retval.public = paillier_pubkey_to_hex(publics);
   retval.private = paillier_prvkey_to_hex(privates);
+  paillier_freepubkey(publics);
+  paillier_freeprvkey(privates);
   return retval;
 }
 
@@ -34,12 +36,16 @@ void* encrypt_num(unsigned long int num, char *publkey, int* size)
   //Do the encryption!
   paillier_enc(encrypted,publics,plain,paillier_get_rand_devrandom);
 
+
+
   //return the result!
 
   void *result;
   *size = mpz_sizeinbase(encrypted->c, 2);
   result = paillier_ciphertext_to_bytes(mpz_sizeinbase(encrypted->c, 2),encrypted);
-  
+  paillier_freeplaintext(plain);
+  paillier_freeciphertext(encrypted);
+  paillier_freepubkey(publics);
   return result;
 }
 
@@ -58,11 +64,15 @@ unsigned int decrypt_num(void *to_unencrypt,char* pubkey,char*privkey, int size)
     paillier_pubkey_t* publics = paillier_pubkey_from_hex(pubkey);
     paillier_prvkey_t* privates = paillier_prvkey_from_hex(privkey,publics);
 
-  //make a plaintext to store the result. 10 is just a stub, could be anything.
 
   paillier_plaintext_t* plainText = paillier_dec(NULL,publics,privates,encrypted);
+  unsigned int result = mpz_get_ui(plainText->m);
+  paillier_freeplaintext( plainText);
+  paillier_freepubkey(publics);
+  paillier_freeprvkey(privates);
+  paillier_freeciphertext(encrypted);
 
-  return mpz_get_ui(plainText->m);
+  return result;
 }
 
 void* homomorphic_add(void *num1,void* num2, char* publ,int size1, int size2, int* retsize)
@@ -88,37 +98,25 @@ void* homomorphic_add(void *num1,void* num2, char* publ,int size1, int size2, in
   *retsize = mpz_sizeinbase(ct->c, 2);
   void* result;
  result = paillier_ciphertext_to_bytes(mpz_sizeinbase(ct->c, 2),ct); 
+  paillier_freepubkey(publics);
+  paillier_freeciphertext(encrypted1);
+  paillier_freeciphertext(encrypted2);
+  paillier_freeciphertext(ct);
 
   //return result as iresult
  return result;
 }
 // Allocates and returns a pointer to an array of unsigned chars
-unsigned char* toText (void* data, int size) {
-    unsigned char* ret = (unsigned char*) malloc(sizeof(unsigned char) * size);
-    for (int i = 0; i < size; i++) {
-        ret[i] = *((unsigned char*) (data + i));
-    }
-    return ret;
+unsigned char* toText (void* data) {
+    return (unsigned char*) data;
 }
 void* toData (unsigned char* text) {
     return (void*) text;
 }
 
-
-int main()
-{
-    keys bothkeys = generate_keys();
-    printf("Keys:\nPublic: %s\n\nPrivate: %s\n",bothkeys.public,bothkeys.private);
-    int size,size1,size2;
-    unsigned int result;
-    void *enc = encrypt_num(1234, bothkeys.public, &size);
-    void *enc2 = encrypt_num(1234,bothkeys.public,&size1); 
-    void *enc3 = homomorphic_add(enc,enc2,bothkeys.public,size,size1,&size2);
-    result = decrypt_num(enc3, bothkeys.public ,bothkeys.private, size2);
-    printf("Decrypted Number:\n%d\n",result);
-  
-    return 0;
-
-    
+void* zeroed(int* size) {
+    paillier_ciphertext_t* encrypted =  paillier_create_enc_zero();
+    *size = mpz_sizeinbase(encrypted->c, 2);
+    return encrypted;
 }
 
