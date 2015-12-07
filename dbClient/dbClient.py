@@ -1,8 +1,13 @@
 #!/usr/bin/env python
+
+
+# Listen, I realize that there's no input sanitation in this application. I'm sorry.
 from cffi import FFI
 from tabulate import tabulate
 import sys
 import mysql.connector
+from itertools import izip
+
 
 ffi = FFI()
 cdef = None
@@ -13,6 +18,7 @@ cryptoLib = ffi.dlopen('cryptoLib.o')
 
 global_data = []
 keys = None
+KEYSIZE = 128
 
 USER = 'root'
 PASSWORD = ''
@@ -36,6 +42,7 @@ prompt = """\
 ################################################################################"""
 def main(argv=None):
     global keys
+    global global_data
     connection = mysql.connector.connect(user=USER, password=PASSWORD, host=HOST, port=PORT, database=DB)
     cursor = connection.cursor()
     print(prompt)
@@ -52,16 +59,17 @@ def main(argv=None):
 
             ffiInt_salary = ffi.new("unsigned int *", salaryInput)
             ffiInt_ctSize = ffi.new("int *")
-            ffiUC_encrypted = cryptoLib.toText(cryptoLib.encrypt_num(ffiInt_salary[0], keys.public, ffiInt_ctSize), ffiInt_ctSize[0])
+            ffiUC_encrypted = cryptoLib.toText(cryptoLib.encrypt_num(ffiInt_salary[0], keys.public, ffiInt_ctSize))
             encryptedString = ""
             for i in range(ffiInt_ctSize[0]):
                 encryptedString += str(chr(int(ffiUC_encrypted[i])))
             print("Encrypted value: %s" % encryptedString)
-            queryDict['empSalary'] = encryptedString.encode('hex_codec')
+            queryDict['empSalary'] = encryptedString
+            queryDict['pubKey'] = ffi.string(keys.public)
 
             try:
                 cursor.execute("INSERT INTO Employees VALUES"\
-                           "(%(empID)i, %(empAge)i, \"%(empSalary)s\")" % queryDict)
+                           "(%(empID)s, %(empAge)s, %(empSalary)s, %(pubKey)s)", queryDict)
                 connection.commit()
                 print("User added.")
             except:
@@ -84,7 +92,7 @@ def main(argv=None):
                 print("Autogenerating keys.")
                 keys = cryptoLib.generate_keys()
             try:
-                query = "SELECT * FROM Employees "
+                query = "SELECT * FROM Employees e WHERE e.pubKey = \"%s\"" % ffi.string(keys.public)
                 cursor.execute(query)
                 print("Printing result data")
                 printTableRows(cursor.fetchall(), cursor.column_names)
@@ -94,11 +102,32 @@ def main(argv=None):
             if not keys:
                 print("Autogenerating keys.")
                 keys = cryptoLib.generate_keys()
-            pass
+            query = "SELECT SUM_HE(e.SALARY, e.pubKey) AS SUM FROM Employees e WHERE e.pubKey = \"%s\" AND %s %s HAVING 1 AND %s"
+            whereClause = "1 = 1"
+            groupClause = ""
+            havingClause = "1"
+            if (raw_input("Where clause? (y/n) ").lower() == 'y'):
+                whereClause = raw_input("Please enter the where clause (no WHERE).\n")
+            if (raw_input("Group by age? (y/n) ").lower() == 'y'):
+                groupClause = "GROUP BY age"
+                query = "SELECT SUM_HE(SALARY, pubKey) AS SUM, age FROM Employees WHERE pubKey = \"%s\" AND %s %s HAVING 1 AND %s"
+                if (raw_input("Having clause? (y/n) ").lower() == 'y'):
+                    havingClause = raw_input("Please enter the having clause (no HAVING).\n")
+            try:
+                query = query % (ffi.string(keys.public), whereClause, groupClause, havingClause)
+                cursor.execute(query)
+                print("Printing result data")
+                printTableRowsSum(cursor.fetchall(), cursor.column_names)
+            except:
+                print "an error occurred!"
+
+
+
         elif (response == 5):
             keys = cryptoLib.generate_keys()
             print("Keys generated.")
         elif (response == 6):
+            print "Public:\t%s \nPrivate:\t%s" % (ffi.string(keys.public), ffi.string(keys.private))
             pass
         elif (response == 7):
             break
@@ -120,27 +149,31 @@ def printTableRows(tuples, columns):
     rows = []
     for row in tuples:
         newRow = list(row)
-        encryptedSalary = newRow[2].decode('hex_codec')
+        encryptedSalary = newRow[2]
         encryptLength = len(encryptedSalary)
-        ffiUC_encryptedSalary = ffi.new("unsigned char[%i]" % encryptLength, map(ord, list(encryptedSalary)))
+        ffiUC_encryptedSalary = ffi.new("unsigned char[%i]" % encryptLength, list(encryptedSalary))
         newRow[2] = int(cryptoLib.decrypt_num(cryptoLib.toData(ffiUC_encryptedSalary), keys.public, keys.private, encryptLength))
         rows.append(newRow)
     print(tabulate(rows, headers = columns))
+def printTableRowsSum(tuples, columns):
+    rows = []
+    for row in tuples:
+        newRow = list(row)
+        encryptedSalaryHex = newRow[0]
+        encryptedSalary = newRow[0][:-1].decode('hex_codec')
+        encryptLength = len(encryptedSalary)
+        ffiUC_encryptedSalary = ffi.new("unsigned char[%i]" % encryptLength, encryptedSalary)
+        newRow[0] = int(cryptoLib.decrypt_num(cryptoLib.toData(ffiUC_encryptedSalary), keys.public, keys.private, encryptLength))
+        rows.append(newRow)
+    print(tabulate(rows, headers = columns))
+
 
 def decryptSalary(salaryString, pubKey, privKey, size):
     return int(cryptoLib.decrypt_num(cryptoLib.toData(salaryString), pubKey, privKey, size))
 
-
-
-
-
-
-
-
-
-
-
-
+def grouped(iterable, n):
+    "s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), (s2n,s2n+1,s2n+2,...s3n-1), ..."
+    return izip(*[iter(iterable)]*n)
 
 if __name__ == "__main__":
     sys.exit(main())
