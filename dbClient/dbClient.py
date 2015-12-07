@@ -35,9 +35,10 @@ prompt = """\
 ##          2. Select emp_id
 ##          3. Select *
 ##          4. Select SUM
-##          5. Generate new keys
-##          6. Print keys
-##          7. Exit
+##          5. Select AVG
+##          6. Generate new keys
+##          7. Print keys
+##          8. Exit
 ##
 ################################################################################"""
 def main(argv=None):
@@ -98,6 +99,7 @@ def main(argv=None):
                 printTableRows(cursor.fetchall(), cursor.column_names)
             except:
                 print ("An error occurred!")
+        # Simple sum
         elif (response == 4):
             if not keys:
                 print("Autogenerating keys.")
@@ -120,16 +122,44 @@ def main(argv=None):
                 printTableRowsSum(cursor.fetchall(), cursor.column_names)
             except:
                 print "an error occurred!"
-
-
-
+        # Average
         elif (response == 5):
+            if not keys:
+                print("Autogenerating keys.")
+                keys = cryptoLib.generate_keys()
+            query = "SELECT SUM_HE(e.SALARY, e.pubKey) AS AVG FROM Employees e WHERE e.pubKey = \"%s\" AND %s %s HAVING 1 AND %s"
+            query2 = "SELECT count(*) as COUNT FROM Employees e WHERE e.pubKey = \"%s\" AND %s %s HAVING 1 AND %s"
+            whereClause = "1 = 1"
+            groupClause = ""
+            havingClause = "1"
+            if (raw_input("Where clause? (y/n) ").lower() == 'y'):
+                whereClause = raw_input("Please enter the where clause (no WHERE).\n")
+            if (raw_input("Group by age? (y/n) ").lower() == 'y'):
+                groupClause = "GROUP BY age"
+                query = "SELECT SUM_HE(SALARY, pubKey) AS AVG, age FROM Employees WHERE pubKey = \"%s\" AND %s %s HAVING 1 AND %s"
+                query2 = "SELECT age, count(*) AS Avg FROM Employees WHERE pubKey = \"%s\" AND %s %s HAVING 1 AND %s"
+                if (raw_input("Having clause? (y/n) ").lower() == 'y'):
+                    havingClause = raw_input("Please enter the having clause (no HAVING).\n")
+            try:
+                query = query % (ffi.string(keys.public), whereClause, groupClause, havingClause)
+                query2 = query2 % (ffi.string(keys.public), whereClause, groupClause, havingClause)
+                cursor.execute(query2)
+                countResults = cursor.fetchall()
+                cursor.execute(query)
+                sumResults = cursor.fetchall()
+                print("Printing result data")
+                printTableRowsAvg(sumResults, countResults, cursor.column_names)
+            except:
+                print "an error occurred!"
+
+
+        elif (response == 6):
             keys = cryptoLib.generate_keys()
             print("Keys generated.")
-        elif (response == 6):
+        elif (response == 7):
             print "Public:\t%s \nPrivate:\t%s" % (ffi.string(keys.public), ffi.string(keys.private))
             pass
-        elif (response == 7):
+        elif (response == 8):
             break
         response = getNum("Please enter an option " + ("(key generated)" if keys else "(no key generated)") + "\n")
     connection.close()
@@ -166,6 +196,40 @@ def printTableRowsSum(tuples, columns):
         newRow[0] = int(cryptoLib.decrypt_num(cryptoLib.toData(ffiUC_encryptedSalary), keys.public, keys.private, encryptLength))
         rows.append(newRow)
     print(tabulate(rows, headers = columns))
+def printTableRowsAvg(sumTuples, countTuples, columns):
+    rows = []
+    if len(sumTuples) == 1 and countTuples[0][0] == 0:
+        if len(columns) == 2:
+            rows.append(["NULL", "NULL"])
+        else:
+            rows.append(["NULL"])
+        print(tabulate(rows, headers = columns))
+        return
+    else:
+        if len(columns) == 2:
+            counts = dict(countTuples)
+            for row in sumTuples:
+                newRow = list(row)
+                encryptedSalaryHex = newRow[0]
+                encryptedSalary = newRow[0][:-1].decode('hex_codec')
+                encryptLength = len(encryptedSalary)
+                ffiUC_encryptedSalary = ffi.new("unsigned char[%i]" % encryptLength, encryptedSalary)
+                newRow[0] = float(int(cryptoLib.decrypt_num(cryptoLib.toData(ffiUC_encryptedSalary), keys.public, keys.private, encryptLength))) / counts[newRow[1]]
+                rows.append(newRow)
+            print(tabulate(rows, headers = columns))
+            return
+        else:
+            counts = countTuples[0][0]
+            for row in sumTuples:
+                newRow = list(row)
+                encryptedSalaryHex = newRow[0]
+                encryptedSalary = newRow[0][:-1].decode('hex_codec')
+                encryptLength = len(encryptedSalary)
+                ffiUC_encryptedSalary = ffi.new("unsigned char[%i]" % encryptLength, encryptedSalary)
+                newRow[0] = float(int(cryptoLib.decrypt_num(cryptoLib.toData(ffiUC_encryptedSalary), keys.public, keys.private, encryptLength))) / counts
+                rows.append(newRow)
+            print(tabulate(rows, headers = columns))
+            return
 
 
 def decryptSalary(salaryString, pubKey, privKey, size):
