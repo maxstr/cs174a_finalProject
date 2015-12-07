@@ -1,0 +1,23 @@
+Max Stritzinger
+6967905
+
+David Winkenwerder
+5597919
+
+Instructions for installation on server
+1. Unzip code
+2. cd into udf
+3. make
+4. cp .so file to mysql/plugin dir
+5. run CreateFunction.sql located in sql directory
+
+
+Instructions for client
+1. cd into cryptolib
+2. make
+3. cd into dbClient
+4. virtualenv .
+5. source bin/activate
+6. pip install --allow-external mysql-connector -r requirements.txt
+7. fill out connection info in dbClient.py 
+8. ./dbClient.py
