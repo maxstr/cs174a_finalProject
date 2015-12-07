@@ -2,10 +2,10 @@
 #include <gmp.h>
 #include "WrappedCrypto.h"
 #include <string.h>
-#include "homoSum.h"
+#include "SUM_HE.h"
 #include <stdio.h>
 
-my_bool homoSum_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+my_bool SUM_HE_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     if (args->arg_count != 2) {
        strcpy(message, "wrong number of arguments: homoadd() requires two arguments");
         return 1;
@@ -20,20 +20,20 @@ my_bool homoSum_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     return 0;
 }
 
-void homoSum_deinit( UDF_INIT* initid) {
+void SUM_HE_deinit( UDF_INIT* initid) {
     struct sum_data* data = (struct sum_data*) initid->ptr;
     free(data->currentSum);
     free(data);
 }
 
-void homoSum_clear(UDF_INIT* initid, char* is_null, char* message) {
+void SUM_HE_clear(UDF_INIT* initid, char* is_null, char* message) {
     struct sum_data* data = (struct sum_data*) initid->ptr;
     int sumSize = 0;
     data->currentSum = zeroed(&sumSize);
     data->currentLength = sumSize;
 }
 
-void homoSum_add(UDF_INIT* initd, UDF_ARGS* args, char* is_null, char* message) {
+void SUM_HE_add(UDF_INIT* initd, UDF_ARGS* args, char* is_null, char* message) {
     if (args->args[0] && args->args[1]) {
         struct sum_data* data = (struct sum_data*) initd->ptr;
         int newSize;
@@ -46,7 +46,7 @@ void homoSum_add(UDF_INIT* initd, UDF_ARGS* args, char* is_null, char* message) 
         printf("An error occurred!");
 }
 
-char *homoSum(UDF_INIT *initid, UDF_ARGS *args,
+char *SUM_HE(UDF_INIT *initid, UDF_ARGS *args,
           char *result, unsigned long *length,
           char *is_null, char *error) {
     struct sum_data* data = (struct sum_data*) initid->ptr;
